@@ -236,8 +236,9 @@ function handlePrint(id) {
   if (!o) return;
   const c = parseConteudo(o.conteudo);
   const phone = formatPhone(c.numero);
+  const time = formatTime(o.created_at);
   const obs = c.observacao && c.observacao.trim() !== "" ? c.observacao : "-";
-  const html = `<html><head><style>@page{margin:0}body{font-family:monospace;width:72mm;padding:5mm;font-size:14px;line-height:1.4}.text-center{text-align:center}.bold{font-weight:bold}.large{font-size:22px;font-weight:bold}.divider{margin:10px 0;border-top:1px dashed #000}.item{margin:10px 0}</style></head><body><div class="text-center large">PEDIDO</div><div class="divider"></div><div><span class="bold">CLIENTE:</span> ${c.cliente.toUpperCase()}</div><div><span class="bold">NUMERO:</span> ${phone || "-"}</div><div class="divider"></div><div class="bold">PRODUTOS:</div>${c.produtos.map(p => `<div class="item">- ${p}</div>`).join('')}<div class="divider"></div><div class="bold">OBSERVACAO:</div><div>${obs}</div><div class="divider"></div><div class="text-center" style="font-size:10px">ID: #${o.id} | JKASTRO</div></body></html>`;
+  const html = `<html><head><style>@page{margin:0}body{font-family:monospace;width:72mm;padding:5mm;font-size:14px;line-height:1.4}.text-center{text-align:center}.bold{font-weight:bold}.large{font-size:22px;font-weight:bold}.divider{margin:10px 0;border-top:1px dashed #000}.item{margin:10px 0}</style></head><body><div class="text-center large">PEDIDO</div><div class="divider"></div><div><span class="bold">CLIENTE:</span> ${c.cliente.toUpperCase()}</div><div><span class="bold">NUMERO:</span> ${phone || "-"}</div><div class="divider"></div><div class="bold">PRODUTOS:</div>${c.produtos.map(p => `<div class="item">- ${p}</div>`).join('')}<div class="divider"></div><div class="bold">OBSERVACAO:</div><div>${obs}</div><div class="divider"></div><div class="text-center" style="font-size:10px">ID: #${o.id} | ${time} | JKASTRO</div></body></html>`;
   const frame = document.getElementById('printFrame');
   const doc = frame.contentWindow.document;
   doc.open(); doc.write(html); doc.close();
@@ -248,6 +249,12 @@ function handleEdit(id) {
   stopAutoRefresh();
   const o = allOrders.find(x => x.id === id);
   const c = parseConteudo(o.conteudo);
+  const time = formatTime(o.created_at);
+  
+  // Atualiza título do modal com a hora
+  $('.modal-title').innerHTML = `<i data-lucide="pencil"></i> Editar Pedido <span style="font-size:0.7rem; color:var(--text-muted); margin-left:8px;">(Feito às ${time})</span>`;
+  lucide.createIcons();
+
   editId.value = id;
   editCliente.value = c.cliente;
   editNumero.value = c.numero;
