@@ -1,0 +1,314 @@
+// ===== CONFIG =====
+const SUPABASE_URL = 'https://bclsxvnunxoadusnarju.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjbHN4dm51bnhvYWR1c25hcmp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4OTY2MzAsImV4cCI6MjA5MDQ3MjYzMH0.F6pSJUYkRMqxZ2FeiHvjxvLTzDoNlPyw5s4D78mxW2w';
+const TABLE = 'print_jobs';
+const SCHEMA = 'jkastro';
+
+// ===== DOM REFS =====
+const $ = (sel) => document.querySelector(sel);
+const loadingState = $('#loadingState');
+const emptyState = $('#emptyState');
+const errorState = $('#errorState');
+const errorText = $('#errorText');
+const ordersContainer = $('#ordersContainer');
+const btnRefresh = $('#btnRefresh');
+const btnRetry = $('#btnRetry');
+const statTotal = $('#statTotal');
+const statToday = $('#statToday');
+
+const editModal = $('#editModal');
+const editForm = $('#editForm');
+const editId = $('#editId');
+const editCliente = $('#editCliente');
+const editNumero = $('#editNumero');
+const editProdutos = $('#editProdutos');
+const editObservacao = $('#editObservacao');
+const modalClose = $('#modalClose');
+const modalCancel = $('#modalCancel');
+
+const toast = $('#toast');
+const toastText = $('#toastText');
+
+// ===== HEADERS HELPER =====
+const getHeaders = (method = 'GET') => {
+  const h = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Content-Type': 'application/json',
+    'Accept-Profile': SCHEMA
+  };
+  if (method !== 'GET') {
+    h['Content-Profile'] = SCHEMA;
+    h['Prefer'] = 'return=representation';
+  }
+  return h;
+};
+
+// ===== API CALLS =====
+async function fetchOrders() {
+  const url = `${SUPABASE_URL}/rest/v1/${TABLE}?select=*&order=created_at.desc`;
+  const res = await fetch(url, { headers: getHeaders('GET') });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || `Erro ${res.status}`);
+  }
+  return res.json();
+}
+
+async function updateOrder(id, conteudo) {
+  const url = `${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${id}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: getHeaders('PATCH'),
+    body: JSON.stringify({
+      conteudo: JSON.stringify(conteudo),
+      status: 'edited'
+    })
+  });
+  if (!res.ok) throw new Error(`Erro ao atualizar: ${res.status}`);
+  return res.json();
+}
+
+// ===== STATE =====
+let allOrders = [];
+
+// ===== DATE UTILS (BRASIL) =====
+const todayStr = () => {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }); // retorna AAAA-MM-DD
+};
+
+const formatDateLabel = (s) => s.split('-').reverse().join('/');
+
+const getDateKey = (iso) => {
+  return new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+};
+
+const formatTime = (iso) => {
+  return new Date(iso).toLocaleTimeString('pt-BR', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    timeZone: 'America/Sao_Paulo' 
+  });
+};
+
+// ===== PARSE CONTEUDO =====
+function parseConteudo(raw) {
+  try {
+    const obj = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return {
+      cliente: obj.cliente || 'Sem nome',
+      numero: obj.numero || '',
+      produtos: Array.isArray(obj.produtos) ? obj.produtos : [],
+      observacao: obj.observacao || ''
+    };
+  } catch (e) {
+    return { cliente: 'Erro de dados', numero: '', produtos: [], observacao: String(raw) };
+  }
+}
+
+function formatPhone(num) {
+  if (!num) return '';
+  const d = num.replace(/\D/g, '');
+  return d.length >= 11 ? `(${d.slice(-11, -9)}) ${d.slice(-9, -4)}-${d.slice(-4)}` : num;
+}
+
+// ===== RENDER =====
+function render(orders) {
+  allOrders = orders;
+  const today = todayStr();
+  statTotal.textContent = orders.length;
+  statToday.textContent = orders.filter(o => getDateKey(o.created_at) === today).length;
+
+  if (orders.length === 0) {
+    ordersContainer.classList.add('hidden');
+    emptyState.classList.remove('hidden');
+    return;
+  }
+
+  emptyState.classList.add('hidden');
+  ordersContainer.classList.remove('hidden');
+
+  const groups = {};
+  orders.forEach(o => {
+    const key = getDateKey(o.created_at);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(o);
+  });
+
+  const sortedKeys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+
+  ordersContainer.innerHTML = sortedKeys.map(key => {
+    const isToday = key === today;
+    return `
+      <section class="date-section">
+        <div class="date-header">
+          <span class="date-badge ${isToday ? 'date-badge--today' : ''}">
+            <i data-lucide="${isToday ? 'calendar-check' : 'calendar'}" class="date-badge-icon"></i>
+            ${isToday ? 'Hoje' : formatDateLabel(key)}
+          </span>
+          <span class="date-count">${groups[key].length} pedidos</span>
+        </div>
+        <div class="orders-row-wrapper">
+          <button class="scroll-btn scroll-btn--left" onclick="scrollRow(this, -1)">
+            <i data-lucide="chevron-left" class="scroll-btn-icon"></i>
+          </button>
+          <div class="orders-row">
+            ${groups[key].map(o => renderCard(o)).join('')}
+          </div>
+          <button class="scroll-btn scroll-btn--right" onclick="scrollRow(this, 1)">
+            <i data-lucide="chevron-right" class="scroll-btn-icon"></i>
+          </button>
+        </div>
+      </section>`;
+  }).join('');
+
+  lucide.createIcons();
+  bindCardEvents();
+}
+
+// Lógica de Scroll
+window.scrollRow = (btn, direction) => {
+  const row = btn.parentElement.querySelector('.orders-row');
+  const scrollAmount = 350 * direction;
+  row.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+};
+
+function renderCard(order) {
+  const c = parseConteudo(order.conteudo);
+  const time = formatTime(order.created_at);
+  const phone = formatPhone(c.numero);
+  const isEdited = order.status === 'edited';
+
+  return `
+    <article class="card">
+      <div class="card-top">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="card-number-badge">#${order.id}</span>
+          ${isEdited ? '<span class="badge-edited">EDITADO</span>' : ''}
+        </div>
+        <button class="card-edit" data-action="edit" data-id="${order.id}"><i data-lucide="pencil"></i></button>
+      </div>
+      <div class="card-body">
+        <div class="card-client"><i data-lucide="user" class="card-client-icon"></i> ${escapeHtml(c.cliente)}</div>
+        ${phone ? `<div class="card-phone"><i data-lucide="phone"></i> ${phone}</div>` : ''}
+        <hr class="card-divider" />
+        <ul class="card-products">${c.produtos.map(p => `<li><span class="product-bullet"></span>${escapeHtml(p)}</li>`).join('')}</ul>
+        ${c.observacao ? `<div class="card-obs">${escapeHtml(c.observacao)}</div>` : ''}
+        <div class="card-time"><i data-lucide="clock"></i> ${time}</div>
+      </div>
+      <div class="card-actions">
+        <button class="card-action" data-action="copy" data-id="${order.id}"><i data-lucide="copy"></i> Copiar</button>
+        <button class="card-action" data-action="print" data-id="${order.id}"><i data-lucide="printer"></i> Imprimir</button>
+      </div>
+    </article>`;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ===== EVENTS =====
+function bindCardEvents() {
+  document.querySelectorAll('[data-action]').forEach(btn => {
+    btn.onclick = () => {
+      const action = btn.dataset.action;
+      const id = Number(btn.dataset.id);
+      if (action === 'copy') handleCopy(id);
+      if (action === 'print') handlePrint(id);
+      if (action === 'edit') handleEdit(id);
+    };
+  });
+}
+
+function handleCopy(id) {
+  const o = allOrders.find(x => x.id === id);
+  if (!o) return;
+  const c = parseConteudo(o.conteudo);
+  const phone = formatPhone(c.numero);
+  const text = [`Cliente: ${c.cliente}`, phone ? `Tel: ${phone}` : '', '', 'Produtos:', ...c.produtos.map(p => `- ${p}`), '', `Obs: ${c.observacao || '-'}`].filter(Boolean).join('\n');
+  navigator.clipboard.writeText(text).then(() => showToast('Copiado!'));
+}
+
+function handlePrint(id) {
+  const o = allOrders.find(x => x.id === id);
+  if (!o) return;
+  const c = parseConteudo(o.conteudo);
+  const phone = formatPhone(c.numero);
+  const obs = c.observacao && c.observacao.trim() !== "" ? c.observacao : "-";
+  const html = `<html><head><style>@page{margin:0}body{font-family:monospace;width:72mm;padding:5mm;font-size:14px;line-height:1.4}.text-center{text-align:center}.bold{font-weight:bold}.large{font-size:22px;font-weight:bold}.divider{margin:10px 0;border-top:1px dashed #000}.item{margin:10px 0}</style></head><body><div class="text-center large">PEDIDO</div><div class="divider"></div><div><span class="bold">CLIENTE:</span> ${c.cliente.toUpperCase()}</div><div><span class="bold">NUMERO:</span> ${phone || "-"}</div><div class="divider"></div><div class="bold">PRODUTOS:</div>${c.produtos.map(p => `<div class="item">- ${p}</div>`).join('')}<div class="divider"></div><div class="bold">OBSERVACAO:</div><div>${obs}</div><div class="divider"></div><div class="text-center" style="font-size:10px">ID: #${o.id} | JKASTRO</div></body></html>`;
+  const frame = document.getElementById('printFrame');
+  const doc = frame.contentWindow.document;
+  doc.open(); doc.write(html); doc.close();
+  setTimeout(() => { frame.contentWindow.focus(); frame.contentWindow.print(); }, 300);
+}
+
+function handleEdit(id) {
+  stopAutoRefresh();
+  const o = allOrders.find(x => x.id === id);
+  const c = parseConteudo(o.conteudo);
+  editId.value = id;
+  editCliente.value = c.cliente;
+  editNumero.value = c.numero;
+  editProdutos.value = c.produtos.join('\n');
+  editObservacao.value = c.observacao;
+  editModal.classList.remove('hidden');
+}
+
+editForm.onsubmit = async (e) => {
+  e.preventDefault();
+  const id = Number(editId.value);
+  const conteudo = {
+    cliente: editCliente.value,
+    numero: editNumero.value,
+    produtos: editProdutos.value.split('\n').filter(p => p.trim()),
+    observacao: editObservacao.value
+  };
+  try {
+    await updateOrder(id, conteudo);
+    closeModal();
+    showToast('Atualizado!');
+    loadOrders();
+  } catch (e) { showToast('Erro ao salvar'); }
+};
+
+function closeModal() { editModal.classList.add('hidden'); startAutoRefresh(); }
+modalClose.onclick = modalCancel.onclick = closeModal;
+
+function showToast(m) {
+  toastText.textContent = m;
+  toast.classList.remove('hidden');
+  setTimeout(() => toast.classList.add('hidden'), 2000);
+}
+
+// ===== REFRESH TIMER =====
+let autoRefreshTimer;
+function startAutoRefresh() {
+  stopAutoRefresh();
+  autoRefreshTimer = setInterval(() => loadOrders(true), 60000);
+}
+function stopAutoRefresh() { if (autoRefreshTimer) clearInterval(autoRefreshTimer); }
+
+async function loadOrders(silent = false) {
+  if (!silent) {
+    loadingState.classList.remove('hidden');
+    errorState.classList.add('hidden');
+    emptyState.classList.add('hidden');
+    ordersContainer.classList.add('hidden');
+  }
+  btnRefresh.classList.add('spinning');
+  try {
+    const data = await fetchOrders();
+    render(data);
+  } catch (e) {
+    if (!silent) { errorText.textContent = e.message; errorState.classList.remove('hidden'); }
+  } finally {
+    loadingState.classList.add('hidden');
+    setTimeout(() => btnRefresh.classList.remove('spinning'), 600);
+  }
+}
+
+btnRefresh.onclick = () => loadOrders();
+btnRetry.onclick = () => loadOrders();
+document.addEventListener('DOMContentLoaded', () => { loadOrders(); startAutoRefresh(); });

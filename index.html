@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JKastro - Pedidos</title>
+  <meta name="description" content="Painel de pedidos do Açougue JKastro" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <div class="header-logo"><i data-lucide="beef" class="logo-icon"></i></div>
+        <div>
+          <h1 class="header-title">JKastro</h1>
+          <p class="header-subtitle">Painel de Pedidos</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="header-stats">
+          <div class="stat-chip"><i data-lucide="package" class="stat-icon"></i><span id="statTotal">0</span><span class="stat-label">pedidos</span></div>
+          <div class="stat-chip stat-chip--today"><i data-lucide="calendar-check" class="stat-icon"></i><span id="statToday">0</span><span class="stat-label">hoje</span></div>
+        </div>
+        <button class="btn-refresh" id="btnRefresh" title="Atualizar"><i data-lucide="refresh-cw" class="btn-refresh-icon"></i></button>
+      </div>
+    </div>
+  </header>
+  <main class="main" id="mainContent">
+    <div class="loading-state" id="loadingState"><div class="loading-spinner"></div><p>Carregando pedidos...</p></div>
+    <div class="empty-state hidden" id="emptyState"><i data-lucide="inbox" class="empty-icon"></i><h2>Nenhum pedido</h2><p>Os pedidos aparecerão aqui.</p></div>
+    <div class="error-state hidden" id="errorState"><i data-lucide="alert-triangle" class="error-icon"></i><h2>Erro ao carregar</h2><p id="errorText"></p><button class="btn btn--primary" id="btnRetry">Tentar novamente</button></div>
+    <div class="orders-container hidden" id="ordersContainer"></div>
+  </main>
+  <!-- Edit Modal -->
+  <div class="modal-overlay hidden" id="editModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title"><i data-lucide="pencil" class="modal-title-icon"></i> Editar Pedido</h2>
+        <button class="modal-close" id="modalClose"><i data-lucide="x"></i></button>
+      </div>
+      <form class="modal-form" id="editForm">
+        <input type="hidden" id="editId" />
+        <div class="form-group"><label class="form-label" for="editCliente"><i data-lucide="user" class="form-label-icon"></i> Cliente</label><input type="text" class="form-input" id="editCliente" required /></div>
+        <div class="form-group"><label class="form-label" for="editNumero"><i data-lucide="phone" class="form-label-icon"></i> Telefone</label><input type="text" class="form-input" id="editNumero" /></div>
+        <div class="form-group"><label class="form-label" for="editProdutos"><i data-lucide="list" class="form-label-icon"></i> Produtos (um por linha)</label><textarea class="form-textarea" id="editProdutos" rows="5" required></textarea></div>
+        <div class="form-group"><label class="form-label" for="editObservacao"><i data-lucide="message-square" class="form-label-icon"></i> Observação</label><textarea class="form-textarea" id="editObservacao" rows="3"></textarea></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn--secondary" id="modalCancel">Cancelar</button>
+          <button type="submit" class="btn btn--primary"><i data-lucide="save" class="btn-icon"></i> Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="toast hidden" id="toast"><i data-lucide="check-circle" class="toast-icon" id="toastIcon"></i><span id="toastText"></span></div>
+  <iframe id="printFrame" class="print-frame"></iframe>
+  <script src="app.js"></script>
+</body>
+</html>
