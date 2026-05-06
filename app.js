@@ -80,11 +80,22 @@ const todayStr = () => {
 const formatDateLabel = (s) => s.split('-').reverse().join('/');
 
 const getDateKey = (iso) => {
-  return new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+  let dateStr = iso;
+  if (!dateStr.includes('Z') && !dateStr.includes('+') && !dateStr.includes('-')) {
+    dateStr += 'Z';
+  }
+  return new Date(dateStr).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
 };
 
 const formatTime = (iso) => {
-  return new Date(iso).toLocaleTimeString('pt-BR', { 
+  if (!iso) return '--:--';
+  // Garante que a string seja tratada como UTC (adiciona Z se não houver fuso)
+  let dateStr = iso;
+  if (!dateStr.includes('Z') && !dateStr.includes('+') && !dateStr.includes('-')) {
+    dateStr += 'Z';
+  }
+  const date = new Date(dateStr);
+  return date.toLocaleTimeString('pt-BR', { 
     hour: '2-digit', 
     minute: '2-digit',
     timeZone: 'America/Sao_Paulo' 
