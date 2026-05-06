@@ -60,6 +60,19 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); line
 .header-subtitle { font-size: 0.8rem; color: var(--text-secondary); font-weight: 500; margin-top: -2px; }
 
 .header-actions { display: flex; align-items: center; gap: 16px; }
+.header-search {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 6px 12px; border-radius: 999px;
+  box-shadow: var(--shadow-sm);
+}
+.header-search-icon { width: 16px; height: 16px; color: var(--text-secondary); }
+.header-search-input {
+  border: none; background: transparent; outline: none;
+  font-family: var(--font); font-size: 0.82rem; color: var(--text);
+  width: 190px;
+}
+.header-search-input::placeholder { color: var(--text-muted); }
 .header-stats { display: flex; gap: 8px; }
 .stat-chip {
   display: flex; align-items: center; gap: 6px;
@@ -349,6 +362,8 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); line
 @media (max-width: 768px) {
   .header-inner { padding: 14px 16px; }
   .main { padding: 16px 16px 40px; }
+  .header-search { padding: 6px 10px; }
+  .header-search-input { width: 120px; }
   .header-stats { display: none; }
   .card { min-width: 280px; width: 280px; }
 }

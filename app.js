@@ -15,6 +15,7 @@ const btnRefresh = $('#btnRefresh');
 const btnRetry = $('#btnRetry');
 const statTotal = $('#statTotal');
 const statToday = $('#statToday');
+const searchInput = $('#searchInput');
 
 const editModal = $('#editModal');
 const editForm = $('#editForm');
@@ -71,6 +72,7 @@ async function updateOrder(id, conteudo) {
 
 // ===== STATE =====
 let allOrders = [];
+let currentQuery = '';
 
 // ===== DATE UTILS (BRASIL) =====
 const todayStr = () => {
@@ -124,16 +126,25 @@ function parseConteudo(raw) {
 
 function formatPhone(num) {
   if (!num) return '';
-  const d = num.replace(/\D/g, '');
-  return d.length >= 11 ? `(${d.slice(-11, -9)}) ${d.slice(-9, -4)}-${d.slice(-4)}` : num;
+  const raw = num.replace(/\D/g, '');
+  let d = raw;
+  if ((d.length === 12 || d.length === 13) && d.startsWith('55')) {
+    d = d.slice(2);
+  }
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return num;
 }
 
 // ===== RENDER =====
-function render(orders) {
-  allOrders = orders;
+function updateStats(orders) {
   const today = todayStr();
   statTotal.textContent = orders.length;
   statToday.textContent = orders.filter(o => getDateKey(o.created_at) === today).length;
+}
+
+function renderView(orders) {
+  const today = todayStr();
 
   if (orders.length === 0) {
     ordersContainer.classList.add('hidden');
@@ -180,6 +191,30 @@ function render(orders) {
 
   lucide.createIcons();
   bindCardEvents();
+}
+
+function applySearch() {
+  const q = currentQuery.trim().toLowerCase();
+  if (!q) {
+    renderView(allOrders);
+    return;
+  }
+  const qDigits = q.replace(/\D/g, '');
+  const filtered = allOrders.filter(o => {
+    const c = parseConteudo(o.conteudo);
+    const name = String(c.cliente || '').toLowerCase();
+    const digits = String(c.numero || '').replace(/\D/g, '');
+    if (name.includes(q)) return true;
+    if (qDigits && digits.includes(qDigits)) return true;
+    return false;
+  });
+  renderView(filtered);
+}
+
+function setOrders(orders) {
+  allOrders = orders;
+  updateStats(orders);
+  applySearch();
 }
 
 // Lógica de Scroll
@@ -323,7 +358,7 @@ async function loadOrders(silent = false) {
   btnRefresh.classList.add('spinning');
   try {
     const data = await fetchOrders();
-    render(data);
+    setOrders(data);
   } catch (e) {
     if (!silent) { errorText.textContent = e.message; errorState.classList.remove('hidden'); }
   } finally {
@@ -334,4 +369,13 @@ async function loadOrders(silent = false) {
 
 btnRefresh.onclick = () => loadOrders();
 btnRetry.onclick = () => loadOrders();
-document.addEventListener('DOMContentLoaded', () => { loadOrders(); startAutoRefresh(); });
+document.addEventListener('DOMContentLoaded', () => {
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      currentQuery = e.target.value;
+      applySearch();
+    });
+  }
+  loadOrders();
+  startAutoRefresh();
+});
