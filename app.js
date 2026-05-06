@@ -79,26 +79,31 @@ const todayStr = () => {
 
 const formatDateLabel = (s) => s.split('-').reverse().join('/');
 
-const getDateKey = (iso) => {
-  let dateStr = iso;
-  if (!dateStr.includes('Z') && !dateStr.includes('+') && !dateStr.includes('-')) {
+const normalizeIso = (iso) => {
+  let dateStr = String(iso).trim();
+  if (dateStr.includes(' ') && !dateStr.includes('T')) {
+    dateStr = dateStr.replace(' ', 'T');
+  }
+  const hasTz = /Z$|[+-]\d{2}:?\d{2}$/.test(dateStr);
+  if (!hasTz) {
     dateStr += 'Z';
   }
+  return dateStr;
+};
+
+const getDateKey = (iso) => {
+  const dateStr = normalizeIso(iso);
   return new Date(dateStr).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
 };
 
 const formatTime = (iso) => {
   if (!iso) return '--:--';
   // Garante que a string seja tratada como UTC (adiciona Z se não houver fuso)
-  let dateStr = iso;
-  if (!dateStr.includes('Z') && !dateStr.includes('+') && !dateStr.includes('-')) {
-    dateStr += 'Z';
-  }
-  const date = new Date(dateStr);
-  return date.toLocaleTimeString('pt-BR', { 
-    hour: '2-digit', 
+  const date = new Date(normalizeIso(iso));
+  return date.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'America/Sao_Paulo' 
+    timeZone: 'America/Sao_Paulo'
   });
 };
 
