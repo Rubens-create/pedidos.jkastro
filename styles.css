@@ -17,7 +17,9 @@
   --receipt-border: #f5e6c8;
   --receipt-shadow: rgba(0,0,0,0.06);
   --green: #16a34a;
+  --green-strong: #15803d;
   --green-bg: #f0fdf4;
+  --green-border: #bbf7d0;
   --blue: #2563eb;
   --blue-bg: #eff6ff;
   --red: #dc2626;
@@ -129,6 +131,12 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); line
 .date-badge-icon { width: 16px; height: 16px; color: var(--accent); }
 .date-badge--today { background: var(--accent); color: #fff; border-color: var(--accent); }
 .date-badge--today .date-badge-icon { color: #fff; }
+.date-badge--completed {
+  background: var(--green-bg);
+  color: var(--green-strong);
+  border-color: var(--green-border);
+}
+.date-badge--completed .date-badge-icon { color: var(--green-strong); }
 .date-count {
   font-size: 0.78rem; color: var(--text-muted); font-weight: 500;
 }
@@ -204,6 +212,17 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); line
   padding: 2px 8px; border-radius: 4px;
   letter-spacing: 0.5px;
 }
+.badge-completed {
+  font-size: 0.65rem; font-weight: 800;
+  background: var(--green-bg); color: var(--green-strong);
+  padding: 2px 8px; border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+.card-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 .card-edit {
   width: 30px; height: 30px; border: none; background: transparent;
   border-radius: var(--radius-xs); cursor: pointer;
@@ -211,7 +230,29 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); line
   color: var(--text-muted); transition: all var(--transition);
 }
 .card-edit:hover { background: rgba(0,0,0,0.06); color: var(--accent); }
+.card-complete {
+  width: 30px; height: 30px; border: none; background: transparent;
+  border-radius: var(--radius-xs); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--green-strong); transition: all var(--transition);
+}
+.card-complete:hover { background: rgba(22,163,74,0.12); }
+.card-complete:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .card-edit-icon { width: 15px; height: 15px; }
+
+.card--completed {
+  background: #f4fdf6;
+  border-color: var(--green-border);
+  opacity: 0.72;
+}
+.card--completed:hover {
+  transform: none;
+  box-shadow: var(--shadow-sm);
+  opacity: 0.82;
+}
 
 .card-body { padding: 12px 18px 16px; flex: 1; }
 .card-client {

@@ -70,6 +70,17 @@ async function updateOrder(id, conteudo) {
   return res.json();
 }
 
+async function completeOrder(id) {
+  const url = `${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${id}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: getHeaders('PATCH'),
+    body: JSON.stringify({ status: 'completed' })
+  });
+  if (!res.ok) throw new Error(`Erro ao concluir: ${res.status}`);
+  return res.json();
+}
+
 // ===== STATE =====
 let allOrders = [];
 let currentQuery = '';
@@ -155,8 +166,11 @@ function renderView(orders) {
   emptyState.classList.add('hidden');
   ordersContainer.classList.remove('hidden');
 
+  const pendingOrders = orders.filter(o => o.status !== 'completed');
+  const completedOrders = orders.filter(o => o.status === 'completed');
+
   const groups = {};
-  orders.forEach(o => {
+  pendingOrders.forEach(o => {
     const key = getDateKey(o.created_at);
     if (!groups[key]) groups[key] = [];
     groups[key].push(o);
@@ -164,7 +178,7 @@ function renderView(orders) {
 
   const sortedKeys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
 
-  ordersContainer.innerHTML = sortedKeys.map(key => {
+  const pendingHtml = sortedKeys.map(key => {
     const isToday = key === today;
     return `
       <section class="date-section">
@@ -188,6 +202,30 @@ function renderView(orders) {
         </div>
       </section>`;
   }).join('');
+
+  const completedHtml = completedOrders.length ? `
+    <section class="date-section date-section--completed">
+      <div class="date-header">
+        <span class="date-badge date-badge--completed">
+          <i data-lucide="check-circle-2" class="date-badge-icon"></i>
+          Concluidos
+        </span>
+        <span class="date-count">${completedOrders.length} pedidos</span>
+      </div>
+      <div class="orders-row-wrapper">
+        <button class="scroll-btn scroll-btn--left" onclick="scrollRow(this, -1)">
+          <i data-lucide="chevron-left" class="scroll-btn-icon"></i>
+        </button>
+        <div class="orders-row">
+          ${completedOrders.map(o => renderCard(o)).join('')}
+        </div>
+        <button class="scroll-btn scroll-btn--right" onclick="scrollRow(this, 1)">
+          <i data-lucide="chevron-right" class="scroll-btn-icon"></i>
+        </button>
+      </div>
+    </section>` : '';
+
+  ordersContainer.innerHTML = pendingHtml + completedHtml;
 
   lucide.createIcons();
   bindCardEvents();
@@ -229,15 +267,20 @@ function renderCard(order) {
   const time = formatTime(order.created_at);
   const phone = formatPhone(c.numero);
   const isEdited = order.status === 'edited';
+  const isCompleted = order.status === 'completed';
 
   return `
-    <article class="card">
+    <article class="card ${isCompleted ? 'card--completed' : ''}">
       <div class="card-top">
         <div style="display: flex; align-items: center; gap: 8px;">
           <span class="card-number-badge">#${order.id}</span>
+          ${isCompleted ? '<span class="badge-completed">CONCLUIDO</span>' : ''}
           ${isEdited ? '<span class="badge-edited">EDITADO</span>' : ''}
         </div>
-        <button class="card-edit" data-action="edit" data-id="${order.id}"><i data-lucide="pencil"></i></button>
+        <div class="card-top-actions">
+          <button class="card-complete" data-action="complete" data-id="${order.id}" title="Concluir pedido" ${isCompleted ? 'disabled' : ''}><i data-lucide="check"></i></button>
+          <button class="card-edit" data-action="edit" data-id="${order.id}"><i data-lucide="pencil"></i></button>
+        </div>
       </div>
       <div class="card-body">
         <div class="card-client"><i data-lucide="user" class="card-client-icon"></i> ${escapeHtml(c.cliente)}</div>
@@ -269,8 +312,21 @@ function bindCardEvents() {
       if (action === 'copy') handleCopy(id);
       if (action === 'print') handlePrint(id);
       if (action === 'edit') handleEdit(id);
+      if (action === 'complete') handleComplete(id);
     };
   });
+}
+
+async function handleComplete(id) {
+  const o = allOrders.find(x => x.id === id);
+  if (!o || o.status === 'completed') return;
+  try {
+    await completeOrder(id);
+    showToast('Pedido concluido!');
+    loadOrders(true);
+  } catch (e) {
+    showToast('Erro ao concluir pedido');
+  }
 }
 
 function handleCopy(id) {
