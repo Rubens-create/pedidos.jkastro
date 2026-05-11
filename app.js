@@ -83,7 +83,31 @@ async function completeOrder(id) {
 
 // ===== STATE =====
 let allOrders = [];
-let currentQuery = '';
+let currentQuery = localStorage.getItem('jk_search') || '';
+
+// ===== SCROLL PERSISTENCE =====
+let scrollState = {
+  windowY: 0,
+  rows: {} // dateKey -> scrollLeft
+};
+
+function saveScrollState() {
+  scrollState.windowY = window.scrollY;
+  document.querySelectorAll('.orders-row').forEach(row => {
+    const key = row.dataset.key;
+    if (key) scrollState.rows[key] = row.scrollLeft;
+  });
+}
+
+function restoreScrollState() {
+  window.scrollTo(0, scrollState.windowY);
+  document.querySelectorAll('.orders-row').forEach(row => {
+    const key = row.dataset.key;
+    if (key && scrollState.rows[key]) {
+      row.scrollLeft = scrollState.rows[key];
+    }
+  });
+}
 
 // ===== DATE UTILS (BRASIL) =====
 const todayStr = () => {
@@ -193,7 +217,7 @@ function renderView(orders) {
           <button class="scroll-btn scroll-btn--left" onclick="scrollRow(this, -1)">
             <i data-lucide="chevron-left" class="scroll-btn-icon"></i>
           </button>
-          <div class="orders-row">
+          <div class="orders-row" data-key="${key}">
             ${groups[key].map(o => renderCard(o)).join('')}
           </div>
           <button class="scroll-btn scroll-btn--right" onclick="scrollRow(this, 1)">
@@ -216,7 +240,7 @@ function renderView(orders) {
         <button class="scroll-btn scroll-btn--left" onclick="scrollRow(this, -1)">
           <i data-lucide="chevron-left" class="scroll-btn-icon"></i>
         </button>
-        <div class="orders-row">
+        <div class="orders-row" data-key="completed">
           ${completedOrders.map(o => renderCard(o)).join('')}
         </div>
         <button class="scroll-btn scroll-btn--right" onclick="scrollRow(this, 1)">
@@ -229,6 +253,7 @@ function renderView(orders) {
 
   lucide.createIcons();
   bindCardEvents();
+  restoreScrollState();
 }
 
 function applySearch() {
@@ -246,6 +271,7 @@ function applySearch() {
     if (qDigits && digits.includes(qDigits)) return true;
     return false;
   });
+  localStorage.setItem('jk_search', q);
   renderView(filtered);
 }
 
@@ -405,6 +431,7 @@ function startAutoRefresh() {
 function stopAutoRefresh() { if (autoRefreshTimer) clearInterval(autoRefreshTimer); }
 
 async function loadOrders(silent = false) {
+  saveScrollState();
   if (!silent) {
     loadingState.classList.remove('hidden');
     errorState.classList.add('hidden');
@@ -427,6 +454,7 @@ btnRefresh.onclick = () => loadOrders();
 btnRetry.onclick = () => loadOrders();
 document.addEventListener('DOMContentLoaded', () => {
   if (searchInput) {
+    searchInput.value = currentQuery;
     searchInput.addEventListener('input', (e) => {
       currentQuery = e.target.value;
       applySearch();
